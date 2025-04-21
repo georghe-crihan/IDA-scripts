@@ -222,50 +222,51 @@ class AboutHandler(idaapi.action_handler_t):
 
 
 class LibSelectHandler(idaapi.action_handler_t):
-    ident = ""
-    flags = 0
-
     def __init__(self):
         idaapi.action_handler_t.__init__(self)
+        self.chooser = LibSelector(items=[["PureBasic v4.50", "x86", "pb-4.50"],
+                                          ["PureBasic v4.51", "x86", "pb-4.51"],
+                                          ["PureBasic v4.30", "x86", "pb-4.30"]])
 
     def activate(self, ctx):
-        global target_lib
-        if self._ask_form():
-            target_lib = 'pb-4.50'
-        else:
-            target_lib = 'pb-4.51'
-        print(target_lib)
+        self.chooser.Show()
         return 1
 
     def update(self, ctx):
         return idaapi.AST_ENABLE_ALWAYS
 
-    def _ask_form(self):
-        class MexForm(ida_kernwin.Form):
-            def __init__(self):
-                ida_kernwin.Form.__init__(self,
-                r"""
-IDAPython: merge example 1
 
-<Flag 0:{optFlag0}>
-<Flag 1:{optFlag1}>{grpFlags}>
-<Ident prefix:{ident}>
-                """,
-                {
-                    "grpFlags": ida_kernwin.Form.ChkGroupControl(("optFlag0", "optFlag1")),
-                    "ident"   : ida_kernwin.Form.StringInput(swidth=10),
-                })
+class LibSelector(idaapi.Choose):
+    """
+    You have to subclass Chooser to override the enter() method
+    """
+    def __init__(self, title="Select library", items=[], icon=21, embedded=False):
+        idaapi.Choose.__init__(self, title=title, cols=[["Library name", 30 | idaapi.Choose.CHCOL_PLAIN],
+                                                        ["Arch", 5 | idaapi.Choose.CHCOL_PLAIN],
+                                                        ["Path", 30 | idaapi.Choose.CHCOL_PLAIN]], icon=icon, embedded=embedded)
+        self.items = items
 
-        form = MexForm()
-        form, _ = form.Compile()
-        form.grpFlags.value = self.flags
-        form.ident.value = self.ident
-        ok = form.Execute()
-        if ok == 1:
-            self.flags = form.grpFlags.value
-            self.ident = form.ident.value
-        form.Free()
-        return ok == 1
+    def GetItems(self):
+        return self.items
+
+    def SetItems(self, items):
+        self.items = [] if items is None else items
+
+    def OnClose(self):
+        pass
+
+    def OnGetLine(self, n):
+        return self.items[n]
+
+    def OnGetSize(self):
+        return len(self.items)
+
+    def OnSelectLine(self, n):
+        global target_lib
+        target_lib = self.items[n][2]
+        idenLibProcessSignatures()
+#        print("The chosen item is %d = %s" % (n, self.items[n]))
+        print("Now press ESC to leave.")
 
 
 class RefreshHandler(idaapi.action_handler_t):
