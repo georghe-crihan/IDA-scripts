@@ -33,14 +33,11 @@ IDENLIB_CONTACT = "Contact: Lasha Khasaia (@_qaz_qaz)"
 local_appdata = os.getenv('LOCALAPPDATA')
 
 if not local_appdata:
-    local_appdata = '/Users/mac/.cache'
+    local_appdata = os.getenv('HOME') + os.sep + '.cache'
 
 target_lib = ""
 
-# __EA64__ is set if IDA is running in 64-bit mode
-__EA64__ = False #ida_idaapi.BADADDR == 0xFFFFFFFFFFFFFFFF
-
-if __EA64__ :
+if idaapi.ph.flag & idaapi.PR_DEFSEG64:
     CAPSTONE_MODE = capstone.CS_MODE_64
     SIG_EXT = ".sig64"
     op_mode = "x64"
@@ -66,9 +63,15 @@ def getNames():
         yield name
 
 def getFiles(path):  
-    for file in os.listdir(path):
-        if os.path.isfile(os.path.join(path, file)):
-            yield path + os.sep + file
+    for f in os.listdir(path):
+        if os.path.isfile(os.path.join(path, f)):
+            yield path + os.sep + f
+
+def getDirs(path):  
+    for d in os.listdir(path):
+        if os.path.isdir(os.path.join(path, d)):
+            yield d
+
 
 # return (start_ea, size)
 def getFuncRanges():
@@ -223,9 +226,8 @@ class AboutHandler(idaapi.action_handler_t):
 class LibSelectHandler(idaapi.action_handler_t):
     def __init__(self):
         idaapi.action_handler_t.__init__(self)
-        self.chooser = LibSelector(items=[["PureBasic v4.50", "x86", "pb-4.50"],
-                                          ["PureBasic v4.51", "x86", "pb-4.51"],
-                                          ["PureBasic v4.30", "x86", "pb-4.30"]])
+        global op_mode
+        self.chooser = LibSelector(items=[[l, op_mode] for l in getDirs(symEx_dir + os.sep + op_mode + os.sep)])
 
     def activate(self, ctx):
         self.chooser.Show()
@@ -237,12 +239,11 @@ class LibSelectHandler(idaapi.action_handler_t):
 
 class LibSelector(idaapi.Choose):
     """
-    You have to subclass Chooser to override the enter() method
+    You have to subclass Chooser to conveniently keep the items list
     """
     def __init__(self, title="Select library", items=[], icon=21, embedded=False):
-        idaapi.Choose.__init__(self, title=title, cols=[["Library name", 30 | idaapi.Choose.CHCOL_PLAIN],
-                                                        ["Arch", 5 | idaapi.Choose.CHCOL_PLAIN],
-                                                        ["Path", 30 | idaapi.Choose.CHCOL_PLAIN]], icon=icon, embedded=embedded)
+        idaapi.Choose.__init__(self, title=title, cols=[["Library", 30 | idaapi.Choose.CHCOL_PLAIN],
+                                                        ["Arch", 5 | idaapi.Choose.CHCOL_PLAIN]])
         self.items = items
 
     def GetItems(self):
@@ -262,8 +263,8 @@ class LibSelector(idaapi.Choose):
 
     def OnSelectLine(self, n):
         global target_lib
-        target_lib = self.items[n][2]
-        print("Library: %s (%s)" % (self.items[n][2], self.items[n][1]))
+        target_lib = self.items[n][0]
+        print("Library: %s (%s)" % (self.items[n][0], self.items[n][1]))
 #        print("Now press ESC to leave.")
         idenLibProcessSignatures()
         self.Close()
