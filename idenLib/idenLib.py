@@ -162,7 +162,6 @@ def idenLib():
                 while func_name in getNames():
                     func_name = func_name + str(digit)
                     digit = digit + 1
-                print("Types: ", type(addr), type(func_name))
                 ida_name.set_name(addr, func_name.decode("utf-8"), ida_name.SN_NOCHECK)
                 print("{}: {}".format(hex(addr), func_name))
                 counter = counter + 1
@@ -264,9 +263,10 @@ class LibSelector(idaapi.Choose):
     def OnSelectLine(self, n):
         global target_lib
         target_lib = self.items[n][2]
+        print("Library: %s (%s)" % (self.items[n][2], self.items[n][1]))
+#        print("Now press ESC to leave.")
         idenLibProcessSignatures()
-#        print("The chosen item is %d = %s" % (n, self.items[n]))
-        print("Now press ESC to leave.")
+        self.Close()
 
 
 class RefreshHandler(idaapi.action_handler_t):
