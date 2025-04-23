@@ -120,6 +120,8 @@ def idenLibProcessSignatures():
             sig = zstd.decompress(sig).strip()
             sig = sig.split(b"\n")
             for line in sig:
+                if line == b"":  # Skip empty lines
+                    continue
                 sig_opcodes, name = line.split(b" ")
                 if b'_' in sig_opcodes: # "main" signatures
                     opcodeMain, mainIndexes = sig_opcodes.split(b'_')
@@ -136,6 +138,8 @@ def idenLibProcessSignatures():
 def idenLib():
     global func_sigs
     global mainSigs
+    global target_lib
+    global op_mode
     # function sigs from the current binary
     func_bytes_addr = {}
     for addr, size in getFuncRanges():
@@ -198,7 +202,7 @@ def idenLib():
                             mainDetected = True
                             break
             
-    print("[idenLib] Applied to {} function(s)".format(counter))
+    print("[idenLib] %s %s Applied to %d function(s)" % (target_lib, op_mode, counter))
 
 
 class idenLib_class(idaapi.action_handler_t):
